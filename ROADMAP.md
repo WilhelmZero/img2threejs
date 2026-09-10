@@ -259,3 +259,7 @@ on something above, see [CONTRIBUTING.md](CONTRIBUTING.md) — say which version
 belongs to so it lands in the right tranche. Feature requests and bug reports genuinely move
 priorities: the [showcase gallery](https://img2threejs-showcase.pages.dev/) tracks likes per
 category precisely so that demand, not guesswork, decides what gets built next.
+
+## Companion demo updates
+
+Glass Studio supports isolated engraving preview sessions and frosted decals; see the [implemented bridge](examples/glass-cup-studio/ENGRAVING_BRIDGE.md).

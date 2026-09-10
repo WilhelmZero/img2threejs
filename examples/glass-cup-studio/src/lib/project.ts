@@ -2,6 +2,7 @@ import { BUILTIN_CUPS, cloneCup, sanitizeCup } from './cup'
 import type { Calibration, GlassSettings, GlassStudioProjectV1, ReferenceImage, SceneSettings, TextureSettings } from '../types'
 
 export const DEFAULT_TEXTURE: TextureSettings = {
+  engraving: false,
   scale: 1,
   repeat: false,
   areaHeight: 0.68,
@@ -43,7 +44,7 @@ export function validateProject(value: unknown): GlassStudioProjectV1 {
     name: typeof project.name === 'string' ? project.name : '导入的玻璃杯',
     cup: sanitizeCup(project.cup),
     glass: { ...project.glass },
-    texture: { ...DEFAULT_TEXTURE, ...project.texture },
+    texture: { ...DEFAULT_TEXTURE, ...project.texture, engraving: project.texture.engraving === true },
     scene: { ...DEFAULT_LIGHT_RIG, ...project.scene },
     decal: project.decal && typeof project.decal.name === 'string' && typeof project.decal.dataUrl === 'string' ? { ...project.decal } : { name: '', dataUrl: '' },
     references: Array.isArray(project.references) ? project.references.slice(0, 6) : [],

@@ -1,3 +1,4 @@
+import { frostedPixels } from "../lib/engravingBridge"
 import { forwardRef, useEffect, useImperativeHandle, useRef } from 'react'
 import * as THREE from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
@@ -8,6 +9,7 @@ import type { CupDefinition, GlassSettings, GlassStudioProjectV1, SceneHandle, S
 
 type GlassSceneProps = {
   cup: CupDefinition
+  onTextureReady?: (url:string) => void
   imageUrl: string
   textureSettings: TextureSettings
   glassSettings: GlassSettings
@@ -45,6 +47,7 @@ function paintDecalCanvas(canvas: HTMLCanvasElement, image: HTMLImageElement, se
     }
   } else context.drawImage(image, -drawWidth / 2, -drawHeight / 2, drawWidth, drawHeight)
   context.restore()
+  if(settings.engraving) { const pixels=context.getImageData(0,0,canvas.width,canvas.height); frostedPixels(pixels.data); context.putImageData(pixels,0,0) }
 }
 
 function latheGeometry(cup: CupDefinition, insetMm = 0, outsetMm = 0) {
@@ -152,7 +155,7 @@ function positionStageLight(
 }
 
 export const GlassScene = forwardRef<SceneHandle, GlassSceneProps>(function GlassScene(
-  { cup, imageUrl, textureSettings, glassSettings, sceneSettings }, ref,
+  { cup, imageUrl, textureSettings, glassSettings, sceneSettings, onTextureReady }, ref,
 ) {
   const mountRef = useRef<HTMLDivElement>(null)
   const rendererRef = useRef<THREE.WebGLRenderer | null>(null)
@@ -170,6 +173,7 @@ export const GlassScene = forwardRef<SceneHandle, GlassSceneProps>(function Glas
   const rimLightRef = useRef<THREE.RectAreaLight | null>(null)
   const fillLightRef = useRef<THREE.RectAreaLight | null>(null)
   const cupRef = useRef(cup)
+  const readyRef = useRef(onTextureReady); readyRef.current = onTextureReady
   const textureSettingsRef = useRef(textureSettings)
   cupRef.current = cup
   textureSettingsRef.current = textureSettings
@@ -271,7 +275,7 @@ export const GlassScene = forwardRef<SceneHandle, GlassSceneProps>(function Glas
       decalFront: decal(THREE.FrontSide, textureSettings.intensity, true), decalRear: decal(THREE.BackSide, textureSettings.intensity * 0.34, false),
     }
     const group = new THREE.Group()
-    group.rotation.y = -0.22
+    group.rotation.y = textureSettings.engraving ? Math.PI - 0.22 : -0.22
     groupRef.current = group
     scene.add(group)
     const floorMaterial = new THREE.MeshPhysicalMaterial({ color: sceneSettings.floorColor, roughness: 0.3, metalness: 0.12, clearcoat: 0.2 })
@@ -425,6 +429,7 @@ export const GlassScene = forwardRef<SceneHandle, GlassSceneProps>(function Glas
       textureRef.current = texture; sourceImageRef.current = image; decalCanvasRef.current = canvas
       materials.decalFront.map = texture; materials.decalRear.map = texture; materials.decalFront.needsUpdate = true; materials.decalRear.needsUpdate = true
       previous?.dispose()
+      requestAnimationFrame(() => { if (!cancelled) readyRef.current?.(imageUrl) })
     }
     image.src = imageUrl
     return () => { cancelled = true; image.onload = null }
@@ -434,8 +439,12 @@ export const GlassScene = forwardRef<SceneHandle, GlassSceneProps>(function Glas
     const texture = textureRef.current; const canvas = decalCanvasRef.current; const image = sourceImageRef.current
     if (texture && canvas && image) { resizeDecalCanvas(canvas, cupRef.current); paintDecalCanvas(canvas, image, textureSettings); texture.needsUpdate = true }
     const materials = materialsRef.current
-    if (materials) { materials.decalFront.opacity = textureSettings.intensity; materials.decalRear.opacity = textureSettings.intensity * 0.34 }
+    if (materials) { materials.decalFront.opacity = textureSettings.intensity; materials.decalRear.opacity = textureSettings.intensity * 0.34; for(const m of [materials.decalFront,materials.decalRear]) { m.roughness=textureSettings.engraving ? .92 : .26; m.clearcoat=textureSettings.engraving ? 0 : .35; m.needsUpdate=true } }
   }, [textureSettings])
+
+  useEffect(() => {
+    if (groupRef.current) groupRef.current.rotation.y = textureSettings.engraving ? Math.PI - 0.22 : -0.22
+  }, [textureSettings.engraving])
 
   useEffect(() => {
     const materials = materialsRef.current

@@ -1,4 +1,5 @@
 export type TextureSettings = {
+  engraving?: boolean
   scale: number
   repeat: boolean
   areaHeight: number

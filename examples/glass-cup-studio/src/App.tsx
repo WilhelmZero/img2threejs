@@ -1,3 +1,4 @@
+import { externalSession, startReceiver, fitEngraving } from "./lib/engravingBridge"
 import { useEffect, useRef, useState } from 'react'
 import { ApiKeyDialog } from './components/ApiKeyDialog'
 import { GlassScene } from './components/GlassScene'
@@ -30,6 +31,9 @@ function ResetIcon() { return <svg viewBox="0 0 24 24" aria-hidden="true"><path 
 function DownloadIcon() { return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m0 0 4-4m-4 4-4-4M5 20h14" /></svg> }
 
 function App() {
+  const [external] = useState(externalSession)
+  const [bridgeMessage,setBridgeMessage] = useState('')
+  const textureReady = useRef<(url:string)=>void>(()=>{})
   const sceneRef = useRef<SceneHandle>(null)
   const importRef = useRef<HTMLInputElement>(null)
   const baselineCupRef = useRef(cloneCup(BUILTIN_CUPS['cola-can']))
@@ -49,17 +53,29 @@ function App() {
   const [toast, setToast] = useState('')
 
   useEffect(() => {
+    if (external) { hydratedRef.current = true; return }
     loadDraft().then((draft) => {
       if (draft) { setProject(draft); baselineCupRef.current = cloneCup(draft.cup) }
     }).catch(() => undefined).finally(() => { hydratedRef.current = true })
   }, [])
 
   useEffect(() => {
-    if (!hydratedRef.current) return
+    if (external || !hydratedRef.current) return
     const timer = window.setTimeout(() => saveDraft(project).catch(() => showToast('参数已保存，但参考图片可能超过浏览器存储空间')), 500)
     return () => window.clearTimeout(timer)
   }, [project])
 
+  useEffect(() => {
+    if (!external) return
+    return startReceiver(external, async (payload,ready) => {
+      const bitmap=await createImageBitmap(payload.blob); const valid=bitmap.width===payload.width && bitmap.height===payload.height;bitmap.close();if(!valid)throw new Error('图片尺寸不符')
+      const dataUrl=await new Promise<string>((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(String(reader.result));reader.onerror=()=>reject(reader.error);reader.readAsDataURL(payload.blob)})
+      const next=createProject(SCENE_PRESETS.studio);const fit=fitEngraving(next.cup,payload.widthMm,payload.heightMm)
+      next.name='雕刻3D预览';next.decal={name:payload.name,dataUrl};next.texture={...DEFAULT_TEXTURE,engraving:true,scale:fit.scale,repeat:false,areaHeight:1,areaCenterY:0,offsetX:0,offsetY:0,intensity:.95}
+      textureReady.current=(url)=>{if(url!==dataUrl)return;textureReady.current=()=>{};ready();if(fit.shrunk)setBridgeMessage('雕刻贴图已导入；超过杯身区域，已等比缩小。独立预览，不覆盖原有草稿。')}
+      setProject(next);setWorkspace('decal')
+    },setBridgeMessage)
+  },[external])
   const updateProject = (updates: Partial<GlassStudioProjectV1>) => setProject((current) => ({ ...current, ...updates, updatedAt: new Date().toISOString() }))
   const showToast = (message: string) => { setToast(message); window.setTimeout(() => setToast(''), 2600) }
   const setCup = (cup: CupDefinition) => updateProject({ cup: sanitizeCup(cup), analysis: cup.source === 'builtin' ? null : project.analysis, refinements: cup.source === 'builtin' ? [] : project.refinements })
@@ -75,7 +91,7 @@ function App() {
     const dataUrl = await new Promise<string>((resolve, reject) => {
       const reader = new FileReader(); reader.onload = () => resolve(String(reader.result)); reader.onerror = () => reject(reader.error); reader.readAsDataURL(file)
     })
-    updateProject({ decal: { name: file.name, dataUrl }, texture: { ...project.texture, intensity: Math.max(project.texture.intensity, 0.9) } })
+    updateProject({ decal: { name: file.name, dataUrl }, texture: { ...project.texture, engraving: false, intensity: Math.max(project.texture.intensity, 0.9) } })
   }
 
   const addReferences = async (files: File[], startRole: ReferenceRole) => {
@@ -189,6 +205,7 @@ function App() {
 
   return <main className={`app-shell app-shell--${workspace}`}>
     <header className="topbar maker-topbar">
+      {external && <span className="engraving-bridge-status" role="status">{bridgeMessage}</span>}
       <a className="brand" href="./" aria-label="Glass Studio 首页"><span className="brand-mark" aria-hidden="true"><i /><i /></span><span>Glass Studio</span></a>
       <nav className="workspace-tabs" aria-label="工作区">
         <button className={workspace === 'decal' ? 'is-selected' : ''} type="button" onClick={() => setWorkspace('decal')}>贴图设计</button>
@@ -210,9 +227,9 @@ function App() {
     </header>
 
     {workspace === 'decal' ? <div className="workspace">
-      <UploadPanel cup={project.cup} imageUrl={project.decal.dataUrl || defaultImageUrl} fileName={project.decal.name} settings={project.texture} onFile={selectDecal} onCup={(cup) => { baselineCupRef.current = cloneCup(cup); if (HIGH_CLARITY_CUPS.has(cup.id as CupModel)) updateProject({ cup, glass: { ...HIGH_CLARITY_GLASS }, analysis: null, refinements: [] }); else setCup(cup) }} onSettings={(texture) => updateProject({ texture })} onReset={() => updateProject({ texture: { ...DEFAULT_TEXTURE }, glass: { transmission: 0.985, roughness: 0.035, ior: 1.48, color: '#ffffff' }, scene: SCENE_PRESETS.studio })} />
+      <UploadPanel cup={project.cup} imageUrl={project.decal.dataUrl || (external ? 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7' : defaultImageUrl)} fileName={project.decal.name} settings={project.texture} onFile={selectDecal} onCup={(cup) => { baselineCupRef.current = cloneCup(cup); if (HIGH_CLARITY_CUPS.has(cup.id as CupModel)) updateProject({ cup, glass: { ...HIGH_CLARITY_GLASS }, analysis: null, refinements: [] }); else setCup(cup) }} onSettings={(texture) => updateProject({ texture })} onReset={() => updateProject({ texture: { ...DEFAULT_TEXTURE }, glass: { transmission: 0.985, roughness: 0.035, ior: 1.48, color: '#ffffff' }, scene: SCENE_PRESETS.studio })} />
       <section className="canvas-panel">
-        <GlassScene ref={sceneRef} cup={project.cup} imageUrl={project.decal.dataUrl || defaultImageUrl} textureSettings={project.texture} glassSettings={project.glass} sceneSettings={project.scene} />
+        <GlassScene onTextureReady={(url) => textureReady.current(url)} ref={sceneRef} cup={project.cup} imageUrl={project.decal.dataUrl || (external ? 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7' : defaultImageUrl)} textureSettings={project.texture} glassSettings={project.glass} sceneSettings={project.scene} />
         <div className="canvas-title"><span>实时预览</span><strong>{project.cup.name}</strong></div>
         <div className="canvas-hint" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="7" y="2.5" width="10" height="19" rx="5" /><path d="M12 3v6" /></svg>拖动旋转 <i /> 滚轮缩放</div>
       </section>
@@ -220,7 +237,7 @@ function App() {
     </div> : <div className="workspace maker-workspace">
       <MakerReferencePanel references={project.references} calibration={project.calibration} unit={unit} stage={makerStage} message={makerMessage} onUnit={setUnit} onCalibration={(calibration) => updateProject({ calibration })} onFiles={addReferences} onRemove={(id) => updateProject({ references: project.references.filter((image) => image.id !== id) })} onAnalyze={() => runAnalysis()} canRefine={Boolean(project.references.length)} refinements={project.refinements} onRefine={(instruction) => runAnalysis(undefined, instruction)} onCancel={() => analysisAbortRef.current?.abort()} onBuiltin={selectBuiltin} autoRounds={project.aiSettings.maxAutoRounds} onAutoRounds={(maxAutoRounds) => updateProject({ aiSettings: { maxAutoRounds: clampAutoFitRounds(maxAutoRounds) } })} autoRunning={autoFitRunning} autoSteps={autoFitSteps} onAutoFit={runAutoFit} />
       <section className="canvas-panel maker-canvas">
-        <GlassScene ref={sceneRef} cup={project.cup} imageUrl={project.decal.dataUrl || defaultImageUrl} textureSettings={{ ...project.texture, intensity: 0 }} glassSettings={project.glass} sceneSettings={project.scene} />
+        <GlassScene ref={sceneRef} cup={project.cup} imageUrl={project.decal.dataUrl || (external ? 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7' : defaultImageUrl)} textureSettings={{ ...project.texture, intensity: 0 }} glassSettings={project.glass} sceneSettings={project.scene} />
         <div className="canvas-title"><span>程序化杯型</span><strong>{project.cup.name}</strong></div>
         <ProfileEditor cup={project.cup} onChange={(outerProfile) => applyCupEdit({ ...project.cup, outerProfile })} />
         <div className="canvas-hint" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="7" y="2.5" width="10" height="19" rx="5" /><path d="M12 3v6" /></svg>拖动旋转 <i /> 拖动截面控制点</div>

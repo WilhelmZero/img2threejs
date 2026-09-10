@@ -445,3 +445,7 @@ must operate on the real showcase/browser route and leave readable PNGs in the w
 - **Implementation**: the above briefly, then edit code; verify with typecheck/build + a screenshot.
 - **Not feasible**: name the blocker, ask for more views / cleaner image / accepted stylization /
   a narrower target. "This cannot reach the requested fidelity from this image" is a valid result.
+
+## Optional Glass Studio demo
+
+The [Glass Studio demo](examples/glass-cup-studio/README.md) supports engraving decals via a browser-only bridge. This is an application integration, separate from the reconstruction and scoring workflow above.

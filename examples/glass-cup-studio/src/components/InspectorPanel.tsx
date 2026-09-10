@@ -22,6 +22,7 @@ export function InspectorPanel({ texture, glass, scene, onTexture, onGlass, onSc
   return (
     <aside className="side-panel side-panel--right">
       <div className="panel-scroll">
+        <label><input type="checkbox" checked={texture.engraving === true} onChange={e => onTexture({...texture, engraving:e.target.checked})} />雕刻贴图（黑色透明、白色磨砂）</label>
         <div className="section-heading">
           <div>
             <p className="section-index">03</p>

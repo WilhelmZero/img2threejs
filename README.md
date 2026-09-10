@@ -517,3 +517,5 @@ Contributions are welcome — procedural material recipes, new gates, host cover
 ## License
 
 Apache License 2.0. See [LICENSE](LICENSE).
+
+The optional [Glass Studio](examples/glass-cup-studio/README.md) demo supports browser-only engraving decal preview from Scene Studio; this does not change the procedural reconstruction pipeline.
