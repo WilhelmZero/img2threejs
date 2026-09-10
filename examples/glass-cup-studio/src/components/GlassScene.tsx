@@ -227,7 +227,6 @@ export const GlassScene = forwardRef<SceneHandle, GlassSceneProps>(function Glas
     if (!mount) return
     const scene = new THREE.Scene()
     scene.background = new THREE.Color(sceneSettings.backgroundColor)
-    scene.fog = new THREE.Fog(sceneSettings.backgroundColor, 11, 22)
     sceneRef.current = scene
     const camera = new THREE.PerspectiveCamera(32, 1, 0.1, 100)
     camera.position.copy(cameraPositionFor(cupRef.current))
@@ -462,7 +461,7 @@ export const GlassScene = forwardRef<SceneHandle, GlassSceneProps>(function Glas
   useEffect(() => {
     const scene = sceneRef.current
     const background = new THREE.Color(sceneSettings.backgroundColor)
-    if (scene) { scene.background = background; if (scene.fog) scene.fog.color.copy(background) }
+    if (scene) scene.background = background
     backdropRef.current?.color.copy(background)
     const floorMaterial = floorRef.current?.material
     if (floorMaterial instanceof THREE.MeshPhysicalMaterial) {
