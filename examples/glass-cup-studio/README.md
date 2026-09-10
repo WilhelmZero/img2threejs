@@ -26,7 +26,8 @@ Open the local URL printed by Vite. Use `npm run build` for a production build.
 - Includes studio, daylight, and midnight environments plus editable background/floor colors,
   environment reflections, key-light intensity, rim-light intensity, and a reflective-floor toggle.
 - Supports orbit, zoom, decal-area height and position, a customizable stage-light rig, parameter reset, responsive mobile layout, and PNG export.
-- Includes two selectable procedural cup models: `tumbler` and the tall can-shaped `cola-can`.
+- Includes four selectable cups: the procedural `tumbler`, `cola-can`, and `clear-cola-can`, plus
+  the validated 60 × 242 mm `tall-wine-glass` GLB loaded lazily when selected.
 - Adds a dedicated cup-maker workspace with 2–6 local reference images, real-size calibration,
   millimetre/centimetre/inch controls, editable lathe profile points, and optional GPT vision
   analysis through the Responses API.

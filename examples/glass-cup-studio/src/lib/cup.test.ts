@@ -49,6 +49,16 @@ describe('cup geometry utilities', () => {
     expect(cup.outerProfile.at(-1)?.yMm).toBeCloseTo(cup.heightMm, 3)
   })
 
+  it('includes the validated stemmed wine glass and keeps decals on its bowl', () => {
+    const cup = BUILTIN_CUPS['tall-wine-glass']
+    const bounds = getDecalBounds(cup, 1, 0)
+    expect(cup.heightMm).toBe(242)
+    expect(cup.maxDiameterMm).toBeCloseTo(80.6, 1)
+    expect(cup.modelAsset).toBe('models/tall-clear-wine-glass-60x242.glb')
+    expect(bounds.bottomMm).toBeCloseTo(148.4, 1)
+    expect(bounds.topMm).toBeCloseTo(236, 1)
+  })
+
   it('moves the shoulder section and synchronizes the editable cup opening', () => {
     const cup = cloneCup(BUILTIN_CUPS['cola-can'])
     const moved = updateCupDimension(cup, 'shoulderStartMm', 100)

@@ -35,9 +35,12 @@ export type CupDefinition = {
   rimRadiusMm: number
   bottomRadiusMm: number
   outerProfile: ProfilePoint[]
+  modelAsset?: string
+  modelDimensionsMm?: { height: number; diameter: number }
+  printAreaMm?: { bottom: number; top: number }
 }
 
-export type CupModel = 'tumbler' | 'cola-can' | 'clear-cola-can'
+export type CupModel = 'tumbler' | 'cola-can' | 'clear-cola-can' | 'tall-wine-glass'
 export type ScenePreset = 'studio' | 'daylight' | 'midnight'
 
 export type SceneSettings = {
