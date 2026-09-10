@@ -30,10 +30,30 @@ export const BUILTIN_CUPS: Record<CupModel, CupDefinition> = {
       [123.5, 33.5], [128.84, 31.98], [132.5, 31.65], [134.97, 32.02], [136.98, 32.385], [137.922, 31.445],
     ]),
   },
+  'tall-wine-glass': {
+    id: 'tall-wine-glass', name: '高透高脚杯', source: 'builtin', heightMm: 242, maxDiameterMm: 80.6,
+    openingDiameterMm: 57.6, wallThicknessMm: 1.2, baseThicknessMm: 3.2, shoulderStartMm: 220,
+    rimRadiusMm: 0.8, bottomRadiusMm: 3.2,
+    modelAsset: 'models/tall-clear-wine-glass-60x242.glb',
+    modelDimensionsMm: { height: 242, diameter: 80.6 },
+    printAreaMm: { bottom: 148.4, top: 236 },
+    // A compact metadata profile is retained for decal wrapping and the maker
+    // cross-section. The rendered glass itself comes from the validated GLB.
+    outerProfile: points([
+      [0, 39.5], [3.2, 39.5], [4.2, 3.1], [105, 3.1], [109.5, 4.2], [121.5, 6],
+      [128, 17.3], [136, 29.3], [142, 36.5], [148.4, 39.55], [152, 40.2], [156, 40.3],
+      [166, 39.7], [180, 37.6], [200, 34.8], [220, 32.2], [230, 31], [236, 30.25], [242, 30],
+    ]),
+  },
 }
 
 export function cloneCup(cup: CupDefinition): CupDefinition {
-  return { ...cup, outerProfile: cup.outerProfile.map((point) => ({ ...point })) }
+  return {
+    ...cup,
+    outerProfile: cup.outerProfile.map((point) => ({ ...point })),
+    modelDimensionsMm: cup.modelDimensionsMm ? { ...cup.modelDimensionsMm } : undefined,
+    printAreaMm: cup.printAreaMm ? { ...cup.printAreaMm } : undefined,
+  }
 }
 
 export function sanitizeCup(input: CupDefinition): CupDefinition {
@@ -63,7 +83,12 @@ export function sanitizeCup(input: CupDefinition): CupDefinition {
 export function updateCupDimension(cup: CupDefinition, key: keyof CupDefinition, value: number): CupDefinition {
   if (key === 'heightMm') {
     const ratio = value / cup.heightMm
-    return sanitizeCup({ ...cup, heightMm: value, outerProfile: cup.outerProfile.map((point) => ({ ...point, yMm: point.yMm * ratio })) })
+    return sanitizeCup({
+      ...cup,
+      heightMm: value,
+      outerProfile: cup.outerProfile.map((point) => ({ ...point, yMm: point.yMm * ratio })),
+      printAreaMm: cup.printAreaMm ? { bottom: cup.printAreaMm.bottom * ratio, top: cup.printAreaMm.top * ratio } : undefined,
+    })
   }
   if (key === 'maxDiameterMm') {
     const ratio = value / cup.maxDiameterMm
@@ -116,9 +141,12 @@ export function getDecalBounds(cup: CupDefinition, areaHeight: number, areaCente
   const centerPosition = clamp(Number(areaCenterY) || 0, -1, 1)
   const freeRatio = 1 - heightRatio
   const centerRatio = 0.5 + centerPosition * freeRatio / 2
+  const rangeBottomMm = cup.printAreaMm?.bottom ?? 0
+  const rangeTopMm = cup.printAreaMm?.top ?? cup.heightMm
+  const printableHeightMm = rangeTopMm - rangeBottomMm
   return {
-    bottomMm: cup.heightMm * (centerRatio - heightRatio / 2),
-    topMm: cup.heightMm * (centerRatio + heightRatio / 2),
+    bottomMm: rangeBottomMm + printableHeightMm * (centerRatio - heightRatio / 2),
+    topMm: rangeBottomMm + printableHeightMm * (centerRatio + heightRatio / 2),
   }
 }
 

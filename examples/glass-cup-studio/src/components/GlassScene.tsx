@@ -65,7 +65,7 @@ function decalLatheGeometry(cup: CupDefinition, settings: TextureSettings, outse
     for (let pointIndex = 0; pointIndex < profile.length; pointIndex += 1) {
       // Keep UVs in the full-cup coordinate system. The decal mesh bounds now
       // crop that fixed image instead of remapping it to fill the selected area.
-      uv.setY(segment * profile.length + pointIndex, getDecalV(profile[pointIndex].yMm, cup.heightMm))
+      uv.setY(segment * profile.length + pointIndex, getDecalV(profile[pointIndex].yMm, cup))
     }
   }
   uv.needsUpdate = true
@@ -88,14 +88,17 @@ function innerLatheGeometry(cup: CupDefinition) {
 function disposeChildren(group: THREE.Group) {
   while (group.children.length) {
     const child = group.children.pop()
-    if (child instanceof THREE.Mesh) child.geometry.dispose()
+    child?.traverse((object) => {
+      if (object instanceof THREE.Mesh) object.geometry.dispose()
+    })
   }
 }
 
 function cameraPositionFor(cup: CupDefinition) {
   const height = cup.heightMm / MM_PER_WORLD_UNIT
   const radius = cup.maxDiameterMm / MM_PER_WORLD_UNIT / 2
-  const distance = Math.max(height * 2.68, radius * 6.2)
+  const heightFraming = cup.modelAsset ? 3.08 : 2.68
+  const distance = Math.max(height * heightFraming, radius * 6.2)
   return new THREE.Vector3(distance * 0.32, height * 0.24, distance)
 }
 
@@ -318,30 +321,67 @@ export const GlassScene = forwardRef<SceneHandle, GlassSceneProps>(function Glas
     const group = groupRef.current
     const materials = materialsRef.current
     if (!group || !materials) return
+    let cancelled = false
     disposeChildren(group)
-    const outer = new THREE.Mesh(latheGeometry(cup), materials.outer)
-    outer.castShadow = true; outer.receiveShadow = true; outer.renderOrder = 1; group.add(outer)
-    const inner = new THREE.Mesh(innerLatheGeometry(cup), materials.inner)
-    inner.renderOrder = 2; group.add(inner)
-    const baseRadius = getOuterRadiusAt(cup, cup.baseThicknessMm * 0.5) / MM_PER_WORLD_UNIT
-    const base = new THREE.Mesh(new THREE.CylinderGeometry(baseRadius, Math.max(0.1, baseRadius - cup.bottomRadiusMm / MM_PER_WORLD_UNIT * 0.3), cup.baseThicknessMm / MM_PER_WORLD_UNIT, 128, 2), materials.base)
-    base.position.y = -cup.heightMm / MM_PER_WORLD_UNIT / 2 + cup.baseThicknessMm / MM_PER_WORLD_UNIT / 2
-    // Render internal glass after the walls. MeshPhysicalMaterial transmission
-    // only samples the opaque scene, so explicit ordering is needed for the
-    // separately-modelled bottom to remain visible through the cup body.
-    base.castShadow = true; base.renderOrder = 3; group.add(base)
-    const rimRadius = (cup.openingDiameterMm / 2 + cup.wallThicknessMm / 2) / MM_PER_WORLD_UNIT
-    const rim = new THREE.Mesh(new THREE.TorusGeometry(rimRadius, cup.rimRadiusMm / MM_PER_WORLD_UNIT, 24, 160), materials.rim)
-    rim.rotation.x = Math.PI / 2; rim.position.y = cup.heightMm / MM_PER_WORLD_UNIT / 2; rim.renderOrder = 5; group.add(rim)
-    const innerRim = new THREE.Mesh(new THREE.TorusGeometry(cup.openingDiameterMm / 2 / MM_PER_WORLD_UNIT, Math.max(0.45, cup.rimRadiusMm * 0.34) / MM_PER_WORLD_UNIT, 18, 160), materials.rim)
-    innerRim.rotation.x = Math.PI / 2; innerRim.position.y = cup.heightMm / MM_PER_WORLD_UNIT / 2 - 0.012; innerRim.renderOrder = 5; group.add(innerRim)
-    const bottomTube = Math.max(0.6, cup.bottomRadiusMm * 0.52) / MM_PER_WORLD_UNIT
-    const bottomRingRadius = Math.max(bottomTube * 1.5, getOuterRadiusAt(cup, cup.bottomRadiusMm) / MM_PER_WORLD_UNIT - bottomTube)
-    const bottomRing = new THREE.Mesh(new THREE.TorusGeometry(bottomRingRadius, bottomTube, 20, 160), materials.rim)
-    bottomRing.rotation.x = Math.PI / 2
-    bottomRing.position.y = -cup.heightMm / MM_PER_WORLD_UNIT / 2 + bottomTube * 0.82
-    bottomRing.renderOrder = 4
-    group.add(bottomRing)
+    if (cup.modelAsset) {
+      const assetUrl = `${import.meta.env.BASE_URL}${cup.modelAsset}`
+      import('three/examples/jsm/loaders/GLTFLoader.js')
+        .then(({ GLTFLoader }) => new GLTFLoader().loadAsync(assetUrl))
+        .then((gltf) => {
+          if (cancelled) {
+            gltf.scene.traverse((object) => {
+              if (!(object instanceof THREE.Mesh)) return
+              object.geometry.dispose()
+              const sourceMaterials = Array.isArray(object.material) ? object.material : [object.material]
+              sourceMaterials.forEach((material) => material.dispose())
+            })
+            return
+          }
+          gltf.scene.traverse((object) => {
+            if (!(object instanceof THREE.Mesh)) return
+            const sourceMaterials = Array.isArray(object.material) ? object.material : [object.material]
+            sourceMaterials.forEach((material) => material.dispose())
+            object.material = materials.outer
+            object.castShadow = true
+            object.receiveShadow = true
+            object.renderOrder = 1
+          })
+          const sourceDimensions = cup.modelDimensionsMm ?? { height: cup.heightMm, diameter: cup.maxDiameterMm }
+          const metresToWorld = 1000 / MM_PER_WORLD_UNIT
+          gltf.scene.scale.set(
+            metresToWorld * cup.maxDiameterMm / sourceDimensions.diameter,
+            metresToWorld * cup.heightMm / sourceDimensions.height,
+            metresToWorld * cup.maxDiameterMm / sourceDimensions.diameter,
+          )
+          gltf.scene.position.y = -cup.heightMm / MM_PER_WORLD_UNIT / 2
+          group.add(gltf.scene)
+        })
+        .catch((error) => console.error('内置高脚杯模型加载失败', error))
+    } else {
+      const outer = new THREE.Mesh(latheGeometry(cup), materials.outer)
+      outer.castShadow = true; outer.receiveShadow = true; outer.renderOrder = 1; group.add(outer)
+      const inner = new THREE.Mesh(innerLatheGeometry(cup), materials.inner)
+      inner.renderOrder = 2; group.add(inner)
+      const baseRadius = getOuterRadiusAt(cup, cup.baseThicknessMm * 0.5) / MM_PER_WORLD_UNIT
+      const base = new THREE.Mesh(new THREE.CylinderGeometry(baseRadius, Math.max(0.1, baseRadius - cup.bottomRadiusMm / MM_PER_WORLD_UNIT * 0.3), cup.baseThicknessMm / MM_PER_WORLD_UNIT, 128, 2), materials.base)
+      base.position.y = -cup.heightMm / MM_PER_WORLD_UNIT / 2 + cup.baseThicknessMm / MM_PER_WORLD_UNIT / 2
+      // Render internal glass after the walls. MeshPhysicalMaterial transmission
+      // only samples the opaque scene, so explicit ordering is needed for the
+      // separately-modelled bottom to remain visible through the cup body.
+      base.castShadow = true; base.renderOrder = 3; group.add(base)
+      const rimRadius = (cup.openingDiameterMm / 2 + cup.wallThicknessMm / 2) / MM_PER_WORLD_UNIT
+      const rim = new THREE.Mesh(new THREE.TorusGeometry(rimRadius, cup.rimRadiusMm / MM_PER_WORLD_UNIT, 24, 160), materials.rim)
+      rim.rotation.x = Math.PI / 2; rim.position.y = cup.heightMm / MM_PER_WORLD_UNIT / 2; rim.renderOrder = 5; group.add(rim)
+      const innerRim = new THREE.Mesh(new THREE.TorusGeometry(cup.openingDiameterMm / 2 / MM_PER_WORLD_UNIT, Math.max(0.45, cup.rimRadiusMm * 0.34) / MM_PER_WORLD_UNIT, 18, 160), materials.rim)
+      innerRim.rotation.x = Math.PI / 2; innerRim.position.y = cup.heightMm / MM_PER_WORLD_UNIT / 2 - 0.012; innerRim.renderOrder = 5; group.add(innerRim)
+      const bottomTube = Math.max(0.6, cup.bottomRadiusMm * 0.52) / MM_PER_WORLD_UNIT
+      const bottomRingRadius = Math.max(bottomTube * 1.5, getOuterRadiusAt(cup, cup.bottomRadiusMm) / MM_PER_WORLD_UNIT - bottomTube)
+      const bottomRing = new THREE.Mesh(new THREE.TorusGeometry(bottomRingRadius, bottomTube, 20, 160), materials.rim)
+      bottomRing.rotation.x = Math.PI / 2
+      bottomRing.position.y = -cup.heightMm / MM_PER_WORLD_UNIT / 2 + bottomTube * 0.82
+      bottomRing.renderOrder = 4
+      group.add(bottomRing)
+    }
     materials.outer.thickness = cup.wallThicknessMm / MM_PER_WORLD_UNIT
     materials.inner.thickness = Math.max(0.025, cup.wallThicknessMm / MM_PER_WORLD_UNIT * 0.55)
     materials.base.thickness = cup.baseThicknessMm / MM_PER_WORLD_UNIT
@@ -366,6 +406,7 @@ export const GlassScene = forwardRef<SceneHandle, GlassSceneProps>(function Glas
       paintDecalCanvas(decalCanvas, decalImage, textureSettings)
       decalTexture.needsUpdate = true
     }
+    return () => { cancelled = true }
   }, [cup, textureSettings.areaCenterY, textureSettings.areaHeight])
 
   useEffect(() => {

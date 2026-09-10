@@ -14,9 +14,16 @@ describe('decal texture aspect', () => {
     const cup = BUILTIN_CUPS['cola-can']
     const short = getDecalBounds(cup, 0.35, 0)
     const tall = getDecalBounds(cup, 0.9, 0)
-    const shortRange = getDecalV(short.topMm, cup.heightMm) - getDecalV(short.bottomMm, cup.heightMm)
-    const tallRange = getDecalV(tall.topMm, cup.heightMm) - getDecalV(tall.bottomMm, cup.heightMm)
+    const shortRange = getDecalV(short.topMm, cup) - getDecalV(short.bottomMm, cup)
+    const tallRange = getDecalV(tall.topMm, cup) - getDecalV(tall.bottomMm, cup)
     expect(shortRange).toBeCloseTo(0.35)
     expect(tallRange).toBeCloseTo(0.9)
+  })
+
+  it('maps a stemmed glass decal to its bowl-only print area', () => {
+    const cup = BUILTIN_CUPS['tall-wine-glass']
+    expect(getDecalV(148.4, cup)).toBe(0)
+    expect(getDecalV(236, cup)).toBe(1)
+    expect(getDecalCanvasSize(cup).width).toBeGreaterThan(getDecalCanvasSize(cup).height)
   })
 })

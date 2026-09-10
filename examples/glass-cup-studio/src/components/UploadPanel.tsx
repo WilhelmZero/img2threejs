@@ -7,6 +7,7 @@ const modelLabels: Record<CupModel, { title: string; subtitle: string; silhouett
   tumbler: { title: '直筒杯', subtitle: '宽口 · 厚底', silhouette: 'tumbler' },
   'cola-can': { title: '可乐罐', subtitle: '高杯 · 收肩', silhouette: 'can' },
   'clear-cola-can': { title: '高透可乐罐', subtitle: '75mm · 精细收肩', silhouette: 'can-premium' },
+  'tall-wine-glass': { title: '高透高脚杯', subtitle: '60×242mm · 圆足', silhouette: 'wine' },
 }
 
 type UploadPanelProps = {
@@ -77,6 +78,7 @@ export function UploadPanel({
           </div>
           {cup.source !== 'builtin' ? <button className="custom-model-choice is-selected" type="button"><strong>{cup.name}</strong><small>来自杯子制作工作区</small></button> : null}
           {cup.id === 'cola-can' || cup.id === 'clear-cola-can' ? <p className="model-helper">默认显示纯透明杯体；参考图中的 Logo 不属于模型。</p> : null}
+          {cup.id === 'tall-wine-glass' ? <p className="model-helper">使用验证通过的空杯 GLB；酒液不属于内置模型，贴纸仅覆盖杯腹安全区域。</p> : null}
         </section>
 
         <section>

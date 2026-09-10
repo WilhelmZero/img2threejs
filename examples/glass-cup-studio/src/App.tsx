@@ -22,6 +22,7 @@ const SCENE_PRESETS: Record<ScenePreset, SceneSettings> = {
 
 const defaultImageUrl = `${import.meta.env.BASE_URL}default-texture.png`
 const HIGH_CLARITY_GLASS = { transmission: 1, roughness: 0.018, ior: 1.46, color: '#f7fffd' }
+const HIGH_CLARITY_CUPS = new Set<CupModel>(['clear-cola-can', 'tall-wine-glass'])
 const referenceOrder: ReferenceRole[] = ['front', 'side', 'top', 'bottom', 'detail-1', 'detail-2']
 type AutoFitStepState = { id: string; title: string; status: 'pending' | 'running' | 'done' | 'error'; summary?: string }
 
@@ -65,7 +66,7 @@ function App() {
   const applyCupEdit = (cup: CupDefinition) => setCup(cup.source === 'builtin' ? { ...cup, id: `custom-${Date.now()}`, name: `${cup.name}副本`, source: 'manual' } : cup)
   const selectBuiltin = (id: CupModel) => {
     const cup = cloneCup(BUILTIN_CUPS[id]); baselineCupRef.current = cloneCup(cup)
-    updateProject({ cup, analysis: null, refinements: [], glass: id === 'clear-cola-can' ? { ...HIGH_CLARITY_GLASS } : project.glass, texture: { ...project.texture, intensity: workspace === 'decal' && id !== 'cola-can' ? 0.9 : 0 } })
+    updateProject({ cup, analysis: null, refinements: [], glass: HIGH_CLARITY_CUPS.has(id) ? { ...HIGH_CLARITY_GLASS } : project.glass, texture: { ...project.texture, intensity: workspace === 'decal' && id !== 'cola-can' ? 0.9 : 0 } })
   }
   const selectScenePreset = (preset: ScenePreset) => updateProject({ scene: SCENE_PRESETS[preset] })
 
@@ -209,7 +210,7 @@ function App() {
     </header>
 
     {workspace === 'decal' ? <div className="workspace">
-      <UploadPanel cup={project.cup} imageUrl={project.decal.dataUrl || defaultImageUrl} fileName={project.decal.name} settings={project.texture} onFile={selectDecal} onCup={(cup) => { baselineCupRef.current = cloneCup(cup); if (cup.id === 'clear-cola-can') updateProject({ cup, glass: { ...HIGH_CLARITY_GLASS }, analysis: null, refinements: [] }); else setCup(cup) }} onSettings={(texture) => updateProject({ texture })} onReset={() => updateProject({ texture: { ...DEFAULT_TEXTURE }, glass: { transmission: 0.985, roughness: 0.035, ior: 1.48, color: '#ffffff' }, scene: SCENE_PRESETS.studio })} />
+      <UploadPanel cup={project.cup} imageUrl={project.decal.dataUrl || defaultImageUrl} fileName={project.decal.name} settings={project.texture} onFile={selectDecal} onCup={(cup) => { baselineCupRef.current = cloneCup(cup); if (HIGH_CLARITY_CUPS.has(cup.id as CupModel)) updateProject({ cup, glass: { ...HIGH_CLARITY_GLASS }, analysis: null, refinements: [] }); else setCup(cup) }} onSettings={(texture) => updateProject({ texture })} onReset={() => updateProject({ texture: { ...DEFAULT_TEXTURE }, glass: { transmission: 0.985, roughness: 0.035, ior: 1.48, color: '#ffffff' }, scene: SCENE_PRESETS.studio })} />
       <section className="canvas-panel">
         <GlassScene ref={sceneRef} cup={project.cup} imageUrl={project.decal.dataUrl || defaultImageUrl} textureSettings={project.texture} glassSettings={project.glass} sceneSettings={project.scene} />
         <div className="canvas-title"><span>实时预览</span><strong>{project.cup.name}</strong></div>
