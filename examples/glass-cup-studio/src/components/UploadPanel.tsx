@@ -135,7 +135,7 @@ export function UploadPanel({
 
         <section className="controls-section">
           <h3>图片调整</h3>
-          <RangeControl label="缩放" value={settings.scale} min={0.55} max={2.4} step={0.05} onChange={(value) => update('scale', value)} />
+          <RangeControl label="缩放" value={settings.scale} min={settings.engraving ? 0.01 : 0.55} max={2.4} step={settings.engraving ? 0.01 : 0.05} onChange={(value) => update('scale', value)} />
           <label className="switch-control">
             <span><strong>重复铺贴</strong><small>开启后图案会在贴纸区域循环出现</small></span>
             <input
