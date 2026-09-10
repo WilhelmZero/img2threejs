@@ -245,6 +245,8 @@ export const GlassScene = forwardRef<SceneHandle, GlassSceneProps>(function Glas
     const controls = new OrbitControls(camera, renderer.domElement)
     controls.enableDamping = true
     controls.dampingFactor = 0.06
+    controls.zoomSpeed = 1.25
+    controls.zoomToCursor = true
     controls.maxPolarAngle = Math.PI * 0.62
     controls.minPolarAngle = Math.PI * 0.18
     controls.target.set(0, 0, 0)
@@ -398,7 +400,9 @@ export const GlassScene = forwardRef<SceneHandle, GlassSceneProps>(function Glas
     const controls = controlsRef.current
     if (camera && controls) {
       const distance = cameraPositionFor(cup).length()
-      controls.minDistance = distance * 0.62; controls.maxDistance = distance * 2
+      const surfaceRadius = cup.maxDiameterMm / MM_PER_WORLD_UNIT / 2
+      controls.minDistance = Math.max(camera.near * 3, surfaceRadius * 1.08)
+      controls.maxDistance = distance * 2
       controls.target.set(0, 0, 0); controls.update()
     }
     const decalCanvas = decalCanvasRef.current
