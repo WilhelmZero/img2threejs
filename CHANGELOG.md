@@ -20,6 +20,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   input across the move. The partition of every character/rig-named line as base mechanism or
   domain content is written down *before* any file moves.
 
+### Added
+
+- **Glass cup studio example** (`examples/glass-cup-studio`) — an isolated React + Vite + Three.js
+  workspace for importing artwork, building and refining rotationally symmetric glass cups, and
+  exporting editable projects, GLB models, and PNG renders.
+- **Cup maker and model interchange** — adds multi-view reference images, real-size calibration,
+  editable millimetre-native lathe profiles, optional multi-turn GPT vision refinement, IndexedDB
+  draft recovery, and project JSON/GLB import and export.
+- **Glass, decal, environment, and stage-light controls** — adds selectable cup profiles, cropped or
+  repeating decals, adjustable print regions, physical glass controls, reflection environments,
+  editable lights, and a reflective-floor toggle.
+
+### Fixed
+
+- Transparent cup layers now use explicit render ordering without depth writes so the inner wall
+  and bottom remain visible through the outer glass.
+- Non-repeating decals retain their source aspect ratio and leave the unused print region
+  transparent instead of stretching edge pixels.
+
 ## [2.0.0] — 2026-09-05
 
 **The Plugin Update.** The plugin ecosystem — domain registry, img2 harness, plugin-served
