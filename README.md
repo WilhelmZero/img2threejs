@@ -41,6 +41,21 @@ Quality-gated, animation-ready, and deliberately token-efficient — reconstruct
 
 *Reference images reconstructed in code as animation-ready Three.js models, running live in the browser.*
 
+## Glass cup studio example
+
+`examples/glass-cup-studio` is an isolated React + Vite + Three.js example for importing a local
+image and wrapping it around a procedural transparent tumbler. It includes orbit/zoom controls,
+texture placement, physical glass controls, responsive editor layouts, and PNG export without
+adding Node dependencies to the stdlib-only forge core.
+
+```bash
+cd examples/glass-cup-studio
+npm install
+npm run dev
+```
+
+See the example's [README](examples/glass-cup-studio/README.md) for implementation details.
+
 ### [→ Open the Live Demo Gallery](https://img2threejs.io/)
 
 Every model in the gallery is generated code, running in your browser. No mesh files, no downloads.

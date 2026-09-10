@@ -29,6 +29,9 @@ runtime/**/node_modules/
 runtime/**/dist/
 runtime/**/.vite/
 integrations/vision/.venv/
+examples/*/node_modules/
+examples/*/dist/
+examples/*/qa/
 
 .cache/spec-search/
 # Demo GIFs/renders in assets/ stay local, but the README's logo must ship with the repo.
