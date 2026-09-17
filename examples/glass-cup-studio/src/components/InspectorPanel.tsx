@@ -15,6 +15,7 @@ type InspectorPanelProps = {
 const SCENE_OPTIONS: { id: ScenePreset; label: string }[] = [
   { id: 'studio', label: '影棚' },
   { id: 'daylight', label: '日光' },
+  { id: 'neutral-gray', label: '中性灰' },
   { id: 'midnight', label: '夜景' },
 ]
 

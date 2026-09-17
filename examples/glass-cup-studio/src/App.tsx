@@ -12,18 +12,20 @@ import { buildAutoFitPlan, clampAutoFitRounds } from './lib/autoFit'
 import { BUILTIN_CUPS, cloneCup, sanitizeCup, updateCupDimension } from './lib/cup'
 import { createProject, DEFAULT_TEXTURE, exportProjectJson, fileToReference, importProjectJson } from './lib/project'
 import { inspectGlb } from './lib/glb'
+import { decalFileToDataUrl, isSupportedDecalFile } from './lib/decalFile'
 import { loadDraft, saveDraft } from './lib/storage'
 import type { CupDefinition, CupModel, GlassStudioProjectV1, LengthUnit, MakerStage, ReferenceRole, SceneHandle, ScenePreset, SceneSettings, WorkspaceMode } from './types'
 
 const SCENE_PRESETS: Record<ScenePreset, SceneSettings> = {
   studio: { preset: 'studio', backgroundColor: '#171b1c', floorColor: '#252a2b', environmentIntensity: 1.6, keyLightIntensity: 8, rimLightIntensity: 6, keyLightColor: '#f5ead7', rimLightColor: '#9fd9d1', lightRigRotation: 0, keyLightAzimuth: 138, keyLightElevation: 1.25, rimLightAzimuth: -36, rimLightElevation: 0.82, lightDistance: 1, lightSoftness: 1, floorReflective: true },
   daylight: { preset: 'daylight', backgroundColor: '#d9e3e1', floorColor: '#b8c4c0', environmentIntensity: 2.05, keyLightIntensity: 10, rimLightIntensity: 4.5, keyLightColor: '#fff5dc', rimLightColor: '#b9dcff', lightRigRotation: -12, keyLightAzimuth: 148, keyLightElevation: 1.35, rimLightAzimuth: -24, rimLightElevation: 0.92, lightDistance: 1.08, lightSoftness: 1.3, floorReflective: true },
+  'neutral-gray': { preset: 'neutral-gray', backgroundColor: '#9d9d9d', floorColor: '#b8c4c0', environmentIntensity: 1.85, keyLightIntensity: 8.8, rimLightIntensity: 5.2, keyLightColor: '#fff8e8', rimLightColor: '#c8e3df', lightRigRotation: -8, keyLightAzimuth: 142, keyLightElevation: 1.28, rimLightAzimuth: -30, rimLightElevation: 0.88, lightDistance: 1.04, lightSoftness: 1.2, floorReflective: true },
   midnight: { preset: 'midnight', backgroundColor: '#07131f', floorColor: '#101b28', environmentIntensity: 1.25, keyLightIntensity: 6.5, rimLightIntensity: 10, keyLightColor: '#8cb8ff', rimLightColor: '#31d6c8', lightRigRotation: 8, keyLightAzimuth: 126, keyLightElevation: 1.05, rimLightAzimuth: -48, rimLightElevation: 0.72, lightDistance: 0.92, lightSoftness: 0.7, floorReflective: true },
 }
 
 const defaultImageUrl = `${import.meta.env.BASE_URL}default-texture.png`
 const HIGH_CLARITY_GLASS = { transmission: 1, roughness: 0.018, ior: 1.46, color: '#f7fffd' }
-const HIGH_CLARITY_CUPS = new Set<CupModel>(['clear-cola-can', 'tall-wine-glass'])
+const HIGH_CLARITY_CUPS = new Set<CupModel>(['clear-cola-can', 'tall-wine-glass', 'shot-glass'])
 const referenceOrder: ReferenceRole[] = ['front', 'side', 'top', 'bottom', 'detail-1', 'detail-2']
 type AutoFitStepState = { id: string; title: string; status: 'pending' | 'running' | 'done' | 'error'; summary?: string }
 
@@ -87,11 +89,12 @@ function App() {
   const selectScenePreset = (preset: ScenePreset) => updateProject({ scene: SCENE_PRESETS[preset] })
 
   const selectDecal = async (file: File) => {
-    if (!file.type.startsWith('image/')) return
-    const dataUrl = await new Promise<string>((resolve, reject) => {
-      const reader = new FileReader(); reader.onload = () => resolve(String(reader.result)); reader.onerror = () => reject(reader.error); reader.readAsDataURL(file)
-    })
-    updateProject({ decal: { name: file.name, dataUrl }, texture: { ...project.texture, engraving: false, intensity: Math.max(project.texture.intensity, 0.9) } })
+    if (!isSupportedDecalFile(file)) { showToast('请选择 JPG、PNG、WebP 或 PDF 文件'); return }
+    try {
+      const dataUrl = await decalFileToDataUrl(file)
+      updateProject({ decal: { name: file.name, dataUrl }, texture: { ...project.texture, engraving: false, intensity: Math.max(project.texture.intensity, 0.9) } })
+      if (file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')) showToast('PDF 第一页已转为高清贴图')
+    } catch (error) { showToast(error instanceof Error ? error.message : 'PDF 贴图导入失败') }
   }
 
   const addReferences = async (files: File[], startRole: ReferenceRole) => {

@@ -45,6 +45,19 @@ export const BUILTIN_CUPS: Record<CupModel, CupDefinition> = {
       [166, 39.7], [180, 37.6], [200, 34.8], [220, 32.2], [230, 31], [236, 30.25], [242, 30],
     ]),
   },
+  'shot-glass': {
+    id: 'shot-glass', name: '小烈酒杯', source: 'builtin', heightMm: 105, maxDiameterMm: 40,
+    openingDiameterMm: 35, wallThicknessMm: 2.5, baseThicknessMm: 5, shoulderStartMm: 95,
+    rimRadiusMm: 1.25, bottomRadiusMm: 3,
+    modelAsset: 'models/small-shot-glass-40mm-34mm-105mm.obj',
+    modelUnit: 'mm',
+    modelUpAxis: 'z',
+    modelDimensionsMm: { height: 105, diameter: 40 },
+    printAreaMm: { bottom: 10, top: 96 },
+    // Profile sampled directly from the supplied OBJ. The source mesh is used
+    // for rendering; these points drive decals and remain editable in Maker.
+    outerProfile: points([[0, 17], [3, 17], [8, 18], [10, 18.05], [55, 19], [96, 19.85], [100, 20], [105, 20]]),
+  },
 }
 
 export function cloneCup(cup: CupDefinition): CupDefinition {

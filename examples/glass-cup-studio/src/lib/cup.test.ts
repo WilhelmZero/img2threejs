@@ -59,6 +59,17 @@ describe('cup geometry utilities', () => {
     expect(bounds.topMm).toBeCloseTo(236, 1)
   })
 
+  it('includes the supplied OBJ shot glass at its measured millimetre size', () => {
+    const cup = BUILTIN_CUPS['shot-glass']
+    const bounds = getDecalBounds(cup, 1, 0)
+    expect(cup.heightMm).toBe(105)
+    expect(cup.maxDiameterMm).toBe(40)
+    expect(cup.modelAsset).toBe('models/small-shot-glass-40mm-34mm-105mm.obj')
+    expect(cup.modelUnit).toBe('mm')
+    expect(cup.modelUpAxis).toBe('z')
+    expect(bounds).toEqual({ bottomMm: 10, topMm: 96 })
+  })
+
   it('moves the shoulder section and synchronizes the editable cup opening', () => {
     const cup = cloneCup(BUILTIN_CUPS['cola-can'])
     const moved = updateCupDimension(cup, 'shoulderStartMm', 100)

@@ -330,11 +330,13 @@ export const GlassScene = forwardRef<SceneHandle, GlassSceneProps>(function Glas
     disposeChildren(group)
     if (cup.modelAsset) {
       const assetUrl = `${import.meta.env.BASE_URL}${cup.modelAsset}`
-      import('three/examples/jsm/loaders/GLTFLoader.js')
-        .then(({ GLTFLoader }) => new GLTFLoader().loadAsync(assetUrl))
-        .then((gltf) => {
+      const loadModel = cup.modelAsset.toLowerCase().endsWith('.obj')
+        ? import('three/examples/jsm/loaders/OBJLoader.js').then(({ OBJLoader }) => new OBJLoader().loadAsync(assetUrl))
+        : import('three/examples/jsm/loaders/GLTFLoader.js').then(({ GLTFLoader }) => new GLTFLoader().loadAsync(assetUrl).then((gltf) => gltf.scene))
+      loadModel
+        .then((model) => {
           if (cancelled) {
-            gltf.scene.traverse((object) => {
+            model.traverse((object) => {
               if (!(object instanceof THREE.Mesh)) return
               object.geometry.dispose()
               const sourceMaterials = Array.isArray(object.material) ? object.material : [object.material]
@@ -342,7 +344,7 @@ export const GlassScene = forwardRef<SceneHandle, GlassSceneProps>(function Glas
             })
             return
           }
-          gltf.scene.traverse((object) => {
+          model.traverse((object) => {
             if (!(object instanceof THREE.Mesh)) return
             const sourceMaterials = Array.isArray(object.material) ? object.material : [object.material]
             sourceMaterials.forEach((material) => material.dispose())
@@ -352,16 +354,19 @@ export const GlassScene = forwardRef<SceneHandle, GlassSceneProps>(function Glas
             object.renderOrder = 1
           })
           const sourceDimensions = cup.modelDimensionsMm ?? { height: cup.heightMm, diameter: cup.maxDiameterMm }
-          const metresToWorld = 1000 / MM_PER_WORLD_UNIT
-          gltf.scene.scale.set(
-            metresToWorld * cup.maxDiameterMm / sourceDimensions.diameter,
-            metresToWorld * cup.heightMm / sourceDimensions.height,
-            metresToWorld * cup.maxDiameterMm / sourceDimensions.diameter,
+          const sourceToWorld = cup.modelUnit === 'mm' ? 1 / MM_PER_WORLD_UNIT : 1000 / MM_PER_WORLD_UNIT
+          model.scale.set(
+            sourceToWorld * cup.maxDiameterMm / sourceDimensions.diameter,
+            sourceToWorld * cup.maxDiameterMm / sourceDimensions.diameter,
+            sourceToWorld * cup.maxDiameterMm / sourceDimensions.diameter,
           )
-          gltf.scene.position.y = -cup.heightMm / MM_PER_WORLD_UNIT / 2
-          group.add(gltf.scene)
+          if (cup.modelUpAxis === 'z') model.rotation.x = -Math.PI / 2
+          else model.scale.y = sourceToWorld * cup.heightMm / sourceDimensions.height
+          if (cup.modelUpAxis === 'z') model.scale.z = sourceToWorld * cup.heightMm / sourceDimensions.height
+          model.position.y = -cup.heightMm / MM_PER_WORLD_UNIT / 2
+          group.add(model)
         })
-        .catch((error) => console.error('内置高脚杯模型加载失败', error))
+        .catch((error) => console.error('内置杯型模型加载失败', error))
     } else {
       const outer = new THREE.Mesh(latheGeometry(cup), materials.outer)
       outer.castShadow = true; outer.receiveShadow = true; outer.renderOrder = 1; group.add(outer)

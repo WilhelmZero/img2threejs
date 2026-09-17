@@ -8,6 +8,7 @@ const modelLabels: Record<CupModel, { title: string; subtitle: string; silhouett
   'cola-can': { title: '可乐罐', subtitle: '高杯 · 收肩', silhouette: 'can' },
   'clear-cola-can': { title: '高透可乐罐', subtitle: '75mm · 精细收肩', silhouette: 'can-premium' },
   'tall-wine-glass': { title: '高透高脚杯', subtitle: '60×242mm · 圆足', silhouette: 'wine' },
+  'shot-glass': { title: '小烈酒杯', subtitle: '40×105mm · OBJ', silhouette: 'shot' },
 }
 
 type UploadPanelProps = {
@@ -45,7 +46,7 @@ export function UploadPanel({
   const [isDragging, setIsDragging] = useState(false)
 
   const acceptFile = (file?: File) => {
-    if (file?.type.startsWith('image/')) onFile(file)
+    if (file && (file.type.startsWith('image/') || file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf'))) onFile(file)
   }
 
   const update = (key: keyof TextureSettings, value: number) => {
@@ -87,7 +88,7 @@ export function UploadPanel({
               <p className="section-index">02</p>
               <h2>导入图片</h2>
             </div>
-            <span className="file-type">JPG · PNG · WEBP</span>
+            <span className="file-type">JPG · PNG · WEBP · PDF</span>
           </div>
 
           <button
@@ -114,13 +115,13 @@ export function UploadPanel({
             ref={inputRef}
             className="visually-hidden"
             type="file"
-            accept="image/png,image/jpeg,image/webp"
+            accept="image/png,image/jpeg,image/webp,application/pdf,.pdf"
             onChange={(event) => acceptFile(event.target.files?.[0])}
           />
           <button className="primary-button" type="button" onClick={() => inputRef.current?.click()}>
             选择图片
           </button>
-          <p className="model-helper">透明背景 PNG 能清楚显示杯身背面的反向图案；JPG 的整张背景也会作为贴纸内容。</p>
+          <p className="model-helper">透明背景 PNG 能显示杯身背面的反向图案；PDF 会按第一页原始比例转为高清贴图。</p>
         </section>
 
         <section className="source-preview">
